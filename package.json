@@ -1,0 +1,32 @@
+{
+  "name": "node-formulator",
+  "version": "0.0.1",
+  "description": "Homebrew node formula generator",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chrmoritz/homebrew-node-formulator.git"
+  },
+  "keywords": [
+    "homebrew",
+    "node",
+    "formula",
+    "generator"
+  ],
+  "author": "Christian Moritz <chrmoritz@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/chrmoritz/homebrew-node-formulator/issues"
+  },
+  "homepage": "https://github.com/chrmoritz/homebrew-node-formulator#readme",
+  "dependencies": {
+    "bluebird": "^3.3.4",
+    "minimist": "^1.2.0",
+    "rimraf": "^2.5.2"
+  }
+}

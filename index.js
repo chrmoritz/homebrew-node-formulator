@@ -63,6 +63,7 @@ let resources = {};
 let reverse_location = {};
 let resources_sha256s = {};
 let nested_root_deps = {};
+let native_addons = [];
 
 function resolveDependencies(deps){
   for (let n in deps){
@@ -78,10 +79,13 @@ function resolveDependencies(deps){
     let info = {url: d._resolved};
     if (d.scripts && d.scripts.install){
       info.install = d.scripts.install.replace('node-pre-gyp', 'node-pre-gyp --build-from-source').replace('prebuild', 'prebuild --compile');
+      native_addons.push(info);
     }
     if (branch.length === 1){ // root level dependency
+      if (native && d.bin) info.bin = d.bin;
       if (resources[n]) throw new Error(`error resolving root dependency: ${d._id}`);
       info.nested = false;
+      info.name = n;
       resources[n] = info;
       resources_sha256s[n] = getHash(info.url);
       reverse_location[d._location] = n;
@@ -92,6 +96,7 @@ function resolveDependencies(deps){
       } else {
         info.nested = true;
         info.parent = d._requiredBy;
+        info.name = d._id;
         resources[d._id] = info;
         resources_sha256s[d._id] = getHash(info.url);
         reverse_location[d._location] = d._id;
@@ -176,7 +181,7 @@ than reinstall the npm module with it and retry creating the formula`));
 }).then(() => {
   out.write('  depends_on "node"\n');
   if (native){
-    out.write('  depends_on :python => :build if MacOS.version <= :snow_leopard\n\n');
+    out.write('  depends_on :python => :build\n\n');
     out.write('  pour_bottle? do\n');
     out.write('    reason "The bottle requires Node v5.x"\n');
     out.write('    satisfy { Language::Node.is_major(5) }\n');
@@ -204,7 +209,15 @@ than reinstall the npm module with it and retry creating the formula`));
     } else {
       out.write(`    sha256 "" # TODO: fill in download informations manually\n`);
     }
-    if (info.install) out.write(`    install "${info.install}" # TODO: check if install command is compiling from source\n`);
+    if (info.bin){
+      out.write('    bin({');
+      let f = true;
+      for (let t in info.bin){
+        out.write(`${f ? '' : ', '}"${path.normalize(info.bin[t])}" => "${t}"`);
+        f = false;
+      }
+      out.write('})\n');
+    }
     if (info.parent){
       if (info.parent.length === 1){
         out.write(`    parent "${info.parent[0]}"\n`);
@@ -217,8 +230,18 @@ than reinstall the npm module with it and retry creating the formula`));
 }).then(() => {
   out.write('  def install\n');
   out.write('    libexec.install Dir["*"]\n');
-  out.write('    Language::Node.node_modules_install resources, libexec/"node_modules"\n');
-  for (var t in data.bin){
+  if (native){
+    out.write('    Language::Node.node_modules_install resources, libexec/"node_modules", true\n');
+    for (let i = 0; i < native_addons.length; i++){
+        let n = native_addons[i];
+        out.write(`    cd libexec/"node_modules/${n.name}" do\n`);
+        out.write(`      system "${n.install}"\n`);
+        out.write('    end\n');
+    }
+  } else {
+      out.write('    Language::Node.node_modules_install resources, libexec/"node_modules"\n');
+  }
+  for (let t in data.bin){
     out.write(`    bin.install_symlink libexec/"${path.normalize(data.bin[t])}" => "${t}"\n`);
   }
   out.write('  end\n\n');
